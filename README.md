@@ -10,6 +10,12 @@ pekerjaan kemungkinan selesai.
 > remaining work will likely be done with a Monte Carlo simulation. Laravel 12 on Postgres (Neon),
 > deployed as a single serverless function on Vercel. UI and content are in Indonesian._
 
+**Coba langsung: [alur-chi.vercel.app](https://alur-chi.vercel.app)**. Klik **Coba papan demo** untuk masuk
+sebagai pemilik papan sebuah tim yang membangun aplikasi antrean klinik, lengkap dengan riwayat 10 minggu.
+Tanpa daftar dan tanpa password.
+
+![Halaman depan Alur: judul "Papan kanban yang berani bilang penuh" dan papan contoh yang bisa diseret](docs/screenshots/landing.webp)
+
 ---
 
 ## Kenapa ini bukan CRUD kanban
@@ -42,6 +48,10 @@ yang sama, di Postgres sungguhan.
   dikembalikan, revisi menambah median 2,9 hari; paling sering karena perbaikan dari review."_
 - Setiap kartu punya **perjalanan**: bar waktu per kolom, putaran revisi, siapa yang mengembalikan, dan kenapa.
 
+| Ke mana waktu kartu habis | Perjalanan satu kartu |
+|---|---|
+| ![Pembagian cycle time per kolom, porsi revisi, dan waktu menunggu](docs/screenshots/breakdown.webp) | ![Perjalanan kartu yang dikembalikan dari QA karena bug](docs/screenshots/journey.webp) |
+
 ### 3. Perkiraan berupa rentang, bukan satu tanggal
 
 [`FlowMetrics::forecast()`](app/Services/FlowMetrics.php) memutar 5.000 simulasi Monte Carlo dari throughput
@@ -54,6 +64,8 @@ ulang dari buku besar perpindahan, dan umur kartu yang sedang dikerjakan dibandi
 Semua grafik digambar sebagai SVG di server; tidak ada pustaka grafik di browser.
 
 ## Fitur
+
+![Papan proyek demo: kolom dengan batas WIP, chip epic, umur kartu, dan tanda revisi](docs/screenshots/board.webp)
 
 - Proyek dengan tiga peran: **pemilik** (kolom, batas WIP, label, anggota, undangan), **anggota**
   (kartu dan epic), **pengamat** (hanya melihat, cocok untuk klien).
@@ -115,11 +127,20 @@ Tes memakai Postgres, bukan SQLite, karena penguncian baris dan CHECK constraint
 
 ## Deploy ke Vercel
 
-1. Import repo di Vercel. `vercel.json` sudah mengatur runtime, rute, dan env yang tidak rahasia.
-2. Isi env rahasia: `APP_KEY`, `APP_URL`, `DB_HOST`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`.
-3. Jalankan migrasi dari lokal ke database produksi: `php artisan migrate --seed`.
+1. Import repo di Vercel. `vercel.json` sudah mengatur runtime, rute, region, dan env yang tidak rahasia.
+2. Isi env rahasia: `APP_KEY` (buat baru dengan `php artisan key:generate --show`), `DB_HOST`,
+   `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`.
+3. Isi database produksi dari lokal: set env `DB_*` ke database Neon, lalu `php artisan migrate --seed --force`.
+   Seeder memutar simulasi lewat jaringan, jadi butuh sekitar 10 menit.
 
-CSS di-build di lokal dan ikut di-commit (`public/css/app.css`), jadi Vercel tidak perlu menjalankan Node.
+Dua hal yang tidak terlihat dari luar:
+
+- libpq di runtime PHP Vercel (dan di PHP untuk Windows) belum mendukung SNI, sehingga Neon menolak koneksi
+  dengan "Endpoint ID is not specified". [`config/database.php`](config/database.php) menambahkan
+  `endpoint=...` ke password sendiri untuk host Neon, jadi `DB_PASSWORD` cukup diisi apa adanya.
+- CSS di-build di lokal dan ikut di-commit (`public/css/app.css`), jadi Vercel tidak perlu menjalankan Node.
+
+Akun demo dipakai bersama. Kalau datanya dirusak pengunjung, jalankan ulang seeder dengan `migrate:fresh --seed --force`.
 
 ## Berkas yang perlu dibaca dulu
 
