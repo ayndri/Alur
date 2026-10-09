@@ -1,0 +1,50 @@
+name: Tes
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # Tes memakai Postgres sungguhan, bukan SQLite: lock baris dan CHECK constraint
+    # adalah bagian dari yang diuji (lihat tests/Feature/RaceTest.php).
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: alur
+          POSTGRES_PASSWORD: alur
+          POSTGRES_DB: alur_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U alur"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: alur_test
+      DB_USERNAME: alur
+      DB_PASSWORD: alur
+      DB_SSLMODE: disable
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql, mbstring
+          coverage: none
+
+      - run: composer install --no-interaction --prefer-dist --no-progress
+
+      - run: cp .env.example .env && php artisan key:generate
+
+      - run: php artisan test
