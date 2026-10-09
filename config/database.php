@@ -1,6 +1,20 @@
 <?php
 
 use Illuminate\Support\Str;
+
+/*
+ * Neon memilih database dari nama host (SNI). libpq lama, termasuk yang dibawa PHP di Windows dan
+ * runtime PHP di Vercel, tidak mengirim SNI, sehingga Neon menolak koneksi dengan "Endpoint ID is not
+ * specified". Jalan keluarnya menyebut endpoint di depan password: "endpoint=ep-xxx;password".
+ * Itu dilakukan otomatis di sini supaya DB_PASSWORD cukup diisi password apa adanya.
+ * https://neon.com/sni
+ */
+$pgPassword = (string) env('DB_PASSWORD', '');
+$pgHost = (string) env('DB_HOST', '127.0.0.1');
+if (str_ends_with($pgHost, '.neon.tech') && ! str_starts_with($pgPassword, 'endpoint=')) {
+    $endpoint = preg_replace('/-pooler$/', '', explode('.', $pgHost)[0]);
+    $pgPassword = "endpoint={$endpoint};{$pgPassword}";
+}
 use Pdo\Mysql;
 
 return [
@@ -91,7 +105,7 @@ return [
             'port' => env('DB_PORT', '5432'),
             'database' => env('DB_DATABASE', 'laravel'),
             'username' => env('DB_USERNAME', 'root'),
-            'password' => env('DB_PASSWORD', ''),
+            'password' => $pgPassword,
             'charset' => env('DB_CHARSET', 'utf8'),
             'prefix' => '',
             'prefix_indexes' => true,
